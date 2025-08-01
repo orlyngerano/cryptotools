@@ -1,8 +1,14 @@
 {
   "name": "walletj",
+  "homepage": "./",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@bitcoinerlab/secp256k1": "^1.2.0",
+    "@react-native/assets-registry": "^0.79.2",
+    "@tamagui/config": "^1.126.11",
+    "@tamagui/text": "^1.126.11",
+    "@tamagui/toast": "^1.126.11",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
@@ -11,9 +17,21 @@
     "@types/node": "^16.7.13",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "bip32": "^5.0.0-rc.0",
+    "bitcoinjs-lib": "^6.1.7",
+    "bitcoinjs-message": "^2.2.0",
+    "browserify": "^17.0.1",
+    "buffer": "^6.0.3",
+    "burnt": "^0.13.0",
+    "ecpair": "^3.0.0",
+    "ethers": "^6.14.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-native-web": "^0.20.0",
     "react-scripts": "5.0.1",
+    "readable-stream": "^4.7.0",
+    "tamagui": "^1.126.11",
+    "tiny-secp256k1": "^2.2.3",
     "typescript": "^4.4.2",
     "web-vitals": "^2.1.0"
   },
@@ -21,7 +39,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "postinstall": "patch-package"
   },
   "eslintConfig": {
     "extends": [
