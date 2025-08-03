@@ -6,11 +6,10 @@ import ECPairFactory from 'ecpair';
 import ecc from '@bitcoinerlab/secp256k1';
 import bitcoinMessage from 'bitcoinjs-message'
 import Button from '@mui/material/Button';
-import { Box, Container, FormControl, FormControlLabel, FormLabel, IconButton, InputAdornment, InputLabel, OutlinedInput, Radio, RadioGroup, Snackbar, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Alert, Box, Container, FormControl, FormControlLabel, FormLabel, IconButton, InputAdornment, InputLabel, OutlinedInput, Radio, RadioGroup, Snackbar, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
 import CopyAll from '@mui/icons-material/CopyAll';
 import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
-
 
 const ECPair = ECPairFactory(ecc);
 
@@ -41,7 +40,7 @@ const useCreateWallet = () => {
       const publicKey = Array.from(keyPair.publicKey).map((byte) => byte.toString(16)).join('');
       setPublicKey(publicKey);
       const { address } = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(keyPair.publicKey) });
-      setAddress(address || '');
+      setAddress(address || '');   
 
       setSignMessage(() => (message: string) => {
         if (!address || !keyPair.privateKey) {
@@ -77,8 +76,6 @@ const useCreateWallet = () => {
           return
         }
 
-
-
         const signature = wallet.signMessageSync(message);
         setSignature(signature);
       });
@@ -95,12 +92,8 @@ const useCreateWallet = () => {
           setVerificationValid(false);
         }
       });
-
-
     }
   };
-
-
 
   return {
     publicKey,
@@ -159,18 +152,18 @@ function Hone() {
 
   let isSignatureVisible = false;
   let isSignatureCopyable = true;
+  let isVerificationNotifyVisible = false;
   if (!!address && walletAction === 'Sign' && signature) {
     isSignatureVisible = true;
   } else if (walletAction === 'Verify') {
     isSignatureVisible = true;
     isSignatureCopyable = false;
+    isVerificationNotifyVisible = isVerificationValid !== null;
   }
-
-  const isVerificationNotifyVisible = isVerificationValid !== null;
 
 
   return (
-    <Container maxWidth="sm">
+    <Container maxWidth="sm" sx={{marginY: 5}}>
       <Snackbar
         anchorOrigin={{ vertical: notify.vertical, horizontal: notify.horizontal }}
         open={notify.open}
@@ -182,8 +175,8 @@ function Hone() {
         message={notify.text}
         key={notify.vertical + notify.horizontal}
       />
-      <Typography variant="h5" gutterBottom>
-        Wallet
+      <Typography variant="h5" marginBottom={2} gutterBottom>
+        Sign and Verify Tool
       </Typography>
       <Typography marginBottom={2} variant="body1" gutterBottom>
         Create In-Memory Wallet which can be use to <b>Sign Message</b> and <b>Verify Signature</b>.
@@ -207,6 +200,7 @@ function Hone() {
         </Box>
 
       </Stack>
+      <Alert severity="info">{`This will generate address coming from random Private and Public key.`}</Alert>
 
       <Box marginTop={3}>
         <FormControl disabled={!address} variant="outlined" fullWidth>
@@ -302,16 +296,8 @@ function Hone() {
             </Button>
           </Box>
         </Stack>
-
-
-
-
-
       </Stack>
-
-
     </Container>
-
   );
 }
 
