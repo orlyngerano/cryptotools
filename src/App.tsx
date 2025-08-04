@@ -10,10 +10,11 @@ import { Alert, Box, Container, FormControl, FormControlLabel, FormLabel, IconBu
 import CopyAll from '@mui/icons-material/CopyAll';
 import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
+import * as Solana from '@solana/kit';
 
 const ECPair = ECPairFactory(ecc);
 
-type CryptoType = "Ethereum" | "Bitcoin";
+type CryptoType = "Ethereum" | "Bitcoin" | 'Solana';
 type WalletActionType = "Sign" | "Verify";
 type NotifyPositionVertical = 'top' | 'bottom';
 type NotifyPositionHorizontal = 'left' | 'center' | 'right';
@@ -33,65 +34,94 @@ const useCreateWallet = () => {
     setVerificationValid(null);
   }
 
-  const create = (crypto: CryptoType) => {
+  const create = async (crypto: CryptoType) => {
     clear();
-    if (crypto === 'Bitcoin') {
-      const keyPair = ECPair.makeRandom();
-      const publicKey = Array.from(keyPair.publicKey).map((byte) => byte.toString(16)).join('');
-      setPublicKey(publicKey);
-      const { address } = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(keyPair.publicKey) });
-      setAddress(address || '');   
+    switch (crypto) {
+      case "Bitcoin": {
+        const keyPair = ECPair.makeRandom();
+        const publicKey = Array.from(keyPair.publicKey).map((byte) => byte.toString(16)).join('');
+        setPublicKey(publicKey);
+        const { address } = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(keyPair.publicKey) });
+        setAddress(address || '');
 
-      setSignMessage(() => (message: string) => {
-        if (!address || !keyPair.privateKey) {
-          return
-        }
+        setSignMessage(() => (message: string) => {
+          if (!address || !keyPair.privateKey) {
+            return
+          }
 
-        const signature = bitcoinMessage.sign(message, Buffer.from(keyPair.privateKey), keyPair.compressed, { segwitType: 'p2wpkh' });
-        setSignature(signature.toString('base64'));
-      });
+          const signature = bitcoinMessage.sign(message, Buffer.from(keyPair.privateKey), keyPair.compressed, { segwitType: 'p2wpkh' });
+          setSignature(signature.toString('base64'));
+        });
 
-      setVerifySignature(() => (message: string, signature: string) => {
-        if (!address || !keyPair.privateKey) {
-          return
-        }
+        setVerifySignature(() => (message: string, signature: string) => {
+          if (!address || !keyPair.privateKey) {
+            return
+          }
 
-        try {
-          const isValid = bitcoinMessage.verify(message, address, signature);
-          setVerificationValid(isValid);
-        } catch (_) {
-          setVerificationValid(false);
-        }
-      });
+          try {
+            const isValid = bitcoinMessage.verify(message, address, signature);
+            setVerificationValid(isValid);
+          } catch (_) {
+            setVerificationValid(false);
+          }
+        });
+        break;
+      }
+      case "Ethereum": {
+        const randomBytes = window.crypto.getRandomValues(new Uint8Array(32));
+        const mnemonic = Mnemonic.fromEntropy(randomBytes);
+        const wallet = Wallet.fromPhrase(mnemonic.phrase);
 
-    } else if (crypto === 'Ethereum') {
-      const randomBytes = window.crypto.getRandomValues(new Uint8Array(32));
-      const mnemonic = Mnemonic.fromEntropy(randomBytes);
-      const wallet = Wallet.fromPhrase(mnemonic.phrase);
+        setPublicKey(wallet.publicKey);
+        setAddress(wallet.address);
+        setSignMessage(() => (message: string) => {
+          if (!wallet) {
+            return
+          }
 
-      setPublicKey(wallet.publicKey);
-      setAddress(wallet.address);
-      setSignMessage(() => (message: string) => {
-        if (!wallet) {
-          return
-        }
-
-        const signature = wallet.signMessageSync(message);
-        setSignature(signature);
-      });
+          const signature = wallet.signMessageSync(message);
+          setSignature(signature);
+        });
 
 
-      setVerifySignature(() => (message: string, signature: string) => {
-        if (!wallet) {
-          return
-        }
-        try {
-          const derivedAddress = verifyMessage(message, signature);
-          setVerificationValid(derivedAddress === wallet.address);
-        } catch (_) {
-          setVerificationValid(false);
-        }
-      });
+        setVerifySignature(() => (message: string, signature: string) => {
+          if (!wallet) {
+            return
+          }
+          try {
+            const derivedAddress = verifyMessage(message, signature);
+            setVerificationValid(derivedAddress === wallet.address);
+          } catch (_) {
+            setVerificationValid(false);
+          }
+        });
+        break;
+      }
+      case "Solana": {
+        const signer = await Solana.generateKeyPairSigner();
+        setPublicKey(''); // todo
+        setAddress(signer.address);
+
+        setSignMessage(() => async (message: string) => {
+          const encodedMessage = Solana.getUtf8Encoder().encode(message);
+          const signature = await Solana.signBytes(signer.keyPair.privateKey, encodedMessage);
+          const decodedSignature = Solana.getBase58Decoder().decode(signature);
+          setSignature(decodedSignature);
+        });
+
+        setVerifySignature(() => async (message: string, signature: string) => {
+          const encodedMessage = Solana.getUtf8Encoder().encode(message);
+          const encodedSignature = Solana.getBase58Encoder().encode(signature);
+          try {
+            const verified = await Solana.verifySignature(signer.keyPair.publicKey, encodedSignature as Solana.SignatureBytes, encodedMessage);
+            setVerificationValid(verified);
+          } catch (_) {
+            setVerificationValid(false);
+          }
+
+        });
+        break;
+      }
     }
   };
 
@@ -118,7 +148,6 @@ function Hone() {
     horizontal: 'center' as NotifyPositionHorizontal,
     text: ""
   });
-
 
   const handleCreateWallet = () => {
     setMessage('');
@@ -163,7 +192,7 @@ function Hone() {
 
 
   return (
-    <Container maxWidth="sm" sx={{marginY: 5}}>
+    <Container maxWidth="sm" sx={{ marginY: 5 }}>
       <Snackbar
         anchorOrigin={{ vertical: notify.vertical, horizontal: notify.horizontal }}
         open={notify.open}
@@ -193,6 +222,7 @@ function Hone() {
           >
             <FormControlLabel value="Bitcoin" control={<Radio />} label="Bitcoin" />
             <FormControlLabel value="Ethereum" control={<Radio />} label="Ethereum" />
+            <FormControlLabel value="Solana" control={<Radio />} label="Solana" />
           </RadioGroup>
         </FormControl>
         <Box textAlign="center" alignContent="center" flex={1}>
@@ -206,7 +236,7 @@ function Hone() {
         <FormControl disabled={!address} variant="outlined" fullWidth>
           <InputLabel htmlFor="wallet-address">Wallet Address</InputLabel>
           <OutlinedInput
-            value={publicKey}
+            value={address}
             readOnly
             id="wallet-address"
             type="text"
