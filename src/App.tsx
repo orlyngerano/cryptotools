@@ -271,6 +271,7 @@ function Hone() {
                   disabled={!address}
                   aria-label="copy address  "
                   onClick={() => {
+                    navigator.clipboard.writeText(address);
                     setNotify({
                       text: "Copy Address",
                       open: true,
@@ -321,6 +322,7 @@ function Hone() {
                 <IconButton
                   aria-label="copy signature"
                   onClick={() => {
+                    navigator.clipboard.writeText(signature);
                     setNotify({
                       text: "Copy Signature",
                       open: true,
