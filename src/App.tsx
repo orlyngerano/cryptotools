@@ -5,16 +5,18 @@ import * as bitcoin from 'bitcoinjs-lib';
 import ECPairFactory from 'ecpair';
 import ecc from '@bitcoinerlab/secp256k1';
 import bitcoinMessage from 'bitcoinjs-message'
-import Button from '@mui/material/Button';
-import { Alert, Box, Container, FormControl, FormControlLabel, FormLabel, IconButton, InputAdornment, InputLabel, OutlinedInput, Radio, RadioGroup, Snackbar, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Button, Alert, Box, Container, FormControl, FormControlLabel, FormLabel, IconButton, InputAdornment, InputLabel, OutlinedInput, Radio, RadioGroup, Snackbar, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
 import CopyAll from '@mui/icons-material/CopyAll';
 import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
 import * as Solana from '@solana/kit';
+import { Wallet as xrplWallet, convertStringToHex } from "xrpl";
+import { sign as xrplSign, verify as xrplVerify } from "ripple-keypairs";
+
 
 const ECPair = ECPairFactory(ecc);
 
-type CryptoType = "Ethereum" | "Bitcoin" | 'Solana';
+type CryptoType = "Ethereum" | "Bitcoin" | 'Solana' | 'Xrpl';
 type WalletActionType = "Sign" | "Verify";
 type NotifyPositionVertical = 'top' | 'bottom';
 type NotifyPositionHorizontal = 'left' | 'center' | 'right';
@@ -122,6 +124,28 @@ const useCreateWallet = () => {
         });
         break;
       }
+      case 'Xrpl':
+        const wallet = xrplWallet.generate();
+        setPublicKey('');
+        setAddress(wallet.classicAddress);
+
+        setSignMessage(() => (message: string) => {
+          const messageHex = convertStringToHex(message);
+          const signature = xrplSign(messageHex, wallet.privateKey);
+          setSignature(signature);
+        });
+
+        setVerifySignature(() => (message: string, signature: string) => {
+          try {
+            const messageHex = convertStringToHex(message);
+            const verified = xrplVerify(messageHex, signature, wallet.publicKey)
+            setVerificationValid(verified);
+          } catch (_) {
+            setVerificationValid(false);
+          }
+        });
+
+        break;
     }
   };
 
@@ -217,12 +241,13 @@ function Hone() {
             row
             aria-labelledby="blockchain-group-label"
             name="blockchain-group"
-            onChange={(_, value) => handleOnCryptoChange(value)}
+            onChange={(_, value: string) => handleOnCryptoChange(value)}
             value={crypto}
           >
             <FormControlLabel value="Bitcoin" control={<Radio />} label="Bitcoin" />
             <FormControlLabel value="Ethereum" control={<Radio />} label="Ethereum" />
             <FormControlLabel value="Solana" control={<Radio />} label="Solana" />
+            <FormControlLabel value="Xrpl" control={<Radio />} label="Xrpl" />
           </RadioGroup>
         </FormControl>
         <Box textAlign="center" alignContent="center" flex={1}>
@@ -265,7 +290,7 @@ function Hone() {
       </Box>
 
       <Box marginTop={3} borderBottom={1} borderColor="divider">
-        <Tabs value={walletAction} onChange={(_, value) => handleTabChange(value)} aria-label="basic tabs example">
+        <Tabs value={walletAction} onChange={(_, value: string) => handleTabChange(value)} aria-label="basic tabs example">
           <Tab label="Sign" value="Sign" />
           <Tab label="Verify" value="Verify" />
         </Tabs>
